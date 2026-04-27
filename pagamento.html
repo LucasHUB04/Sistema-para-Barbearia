@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarberFlow — Pagamento</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="body-cadastro">
+
+<div class="cadastro" style="max-width:500px">
+
+    <div style="text-align:center; margin-bottom:28px;">
+        <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#4e95ff,#2563eb);display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px;">🎉</div>
+        <h1 style="font-family:'Sora',sans-serif;font-size:22px;color:#0f172a;margin-bottom:6px;">Quase lá, {{ barbearia.nome }}!</h1>
+        <p style="color:#64748b;font-size:14px;">Finalize o pagamento para ativar seu acesso.</p>
+    </div>
+
+    <!-- Valor -->
+    <div style="background:#f0f7ff;border:1.5px solid #bfdbfe;border-radius:14px;padding:16px 20px;text-align:center;margin-bottom:24px;">
+        <p style="font-size:12px;color:#2563eb;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Plano Mensal</p>
+        <p style="font-family:'Sora',sans-serif;font-size:32px;font-weight:800;color:#0f172a;">R$ {{ preco }},00</p>
+        <p style="font-size:12px;color:#64748b;">Cobrado todo dia {{ barbearia.dia_cobranca or '1' }} de cada mês</p>
+    </div>
+
+    <!-- Tabs de método -->
+    <div class="pay-tabs" id="pay-tabs">
+        <button class="pay-tab active" onclick="trocarMetodo('pix', this)">PIX</button>
+        <button class="pay-tab" onclick="trocarMetodo('debito', this)">Débito</button>
+        <button class="pay-tab" onclick="trocarMetodo('credito', this)">Crédito</button>
+    </div>
+
+    <!-- PIX -->
+    <div class="pay-section active" id="pay-pix">
+        {% if pix_chave %}
+        <div class="pix-box">
+            <p class="pix-label">Chave PIX</p>
+            <div class="pix-chave-row">
+                <span id="pix-chave-val">{{ pix_chave }}</span>
+                <button onclick="copiarPix()" class="btn-copiar">📋 Copiar</button>
+            </div>
+            <p class="pix-nome">Favorecido: <strong>{{ pix_nome }}</strong></p>
+            <p class="pix-aviso">Após realizar o PIX, cole o comprovante abaixo e clique em enviar. Seu acesso será liberado em até 24h após confirmação.</p>
+        </div>
+        <div style="margin-top:16px">
+            <label style="font-size:12px;font-weight:600;letter-spacing:0.4px;text-transform:uppercase;color:#64748b;display:block;margin-bottom:6px;">Comprovante / ID da transação</label>
+            <input type="text" id="comprovante-pix" placeholder="Cole o ID ou número do comprovante"
+                style="width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid #e2e8f0;font-size:14px;">
+        </div>
+        <button class="btn-proximo" onclick="enviarComprovante()" style="margin-top:12px;">
+            📤 Enviar comprovante
+        </button>
+        {% else %}
+        <div class="pix-aviso" style="text-align:center;padding:24px;">
+            <p>⏳ O admin ainda não configurou a chave PIX. Tente outro método ou entre em contato.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- DÉBITO -->
+    <div class="pay-section" id="pay-debito">
+        <div class="pix-box">
+            <p class="pix-label">Pagamento por Débito</p>
+            <p style="font-size:14px;color:#374151;line-height:1.6;">
+                {{ maquina_instrucoes or 'Entre em contato com o suporte para realizar o pagamento por débito.' }}
+            </p>
+            <p class="pix-aviso" style="margin-top:12px;">Seu acesso será liberado após confirmação pelo admin.</p>
+        </div>
+        <button class="btn-proximo" onclick="notificarPagamento('debito')" style="margin-top:16px;">
+            ✓ Já realizei o pagamento
+        </button>
+    </div>
+
+    <!-- CRÉDITO -->
+    <div class="pay-section" id="pay-credito">
+        <div class="pix-box">
+            <p class="pix-label">Pagamento por Crédito</p>
+            <p style="font-size:14px;color:#374151;line-height:1.6;">
+                {{ maquina_instrucoes or 'Entre em contato com o suporte para realizar o pagamento por crédito.' }}
+            </p>
+            <div style="background:#fef9c3;border:1px solid #fcd34d;border-radius:10px;padding:12px 14px;margin-top:12px;">
+                <p style="font-size:13px;color:#92400e;">💳 <strong>Crédito:</strong> O débito ocorrerá no mesmo dia dos próximos meses. Ex: pagou dia {{ barbearia.dia_cobranca or '01' }}/02 → próxima cobrança dia {{ barbearia.dia_cobranca or '01' }}/03.</p>
+            </div>
+            <p class="pix-aviso" style="margin-top:12px;">Seu acesso será liberado após confirmação pelo admin.</p>
+        </div>
+        <button class="btn-proximo" onclick="notificarPagamento('credito')" style="margin-top:16px;">
+            ✓ Já realizei o pagamento
+        </button>
+    </div>
+
+    <div class="links" style="margin-top:20px;">
+        <a href="/barbeiro" style="color:#94a3b8;font-size:13px;">Já tenho acesso → Entrar</a>
+    </div>
+
+</div>
+
+<style>
+.pay-tabs { display:flex; gap:8px; margin-bottom:20px; }
+.pay-tab { flex:1; padding:10px; border-radius:10px; border:1.5px solid #e2e8f0; background:#fff; font-size:13px; font-weight:700; color:#64748b; cursor:pointer; transition:all 0.2s; font-family:'Sora',sans-serif; }
+.pay-tab.active { border-color:#4e95ff; color:#4e95ff; background:#f0f7ff; }
+.pay-section { display:none; animation:fadeIn 0.25s ease; }
+.pay-section.active { display:block; }
+.pix-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:20px; }
+.pix-label { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#64748b; margin-bottom:10px; }
+.pix-chave-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.pix-chave-row span { font-family:'Sora',sans-serif; font-size:17px; font-weight:700; color:#0f172a; flex:1; word-break:break-all; }
+.btn-copiar { padding:8px 14px; border-radius:8px; border:1.5px solid #4e95ff; background:none; color:#4e95ff; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.pix-nome { font-size:13px; color:#64748b; margin-bottom:10px; }
+.pix-aviso { font-size:12px; color:#94a3b8; line-height:1.5; }
+</style>
+
+<script>
+const barbeariaId = {{ barbearia.id }};
+
+function trocarMetodo(metodo, btn) {
+    document.querySelectorAll('.pay-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.pay-section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('pay-' + metodo).classList.add('active');
+}
+
+function copiarPix() {
+    const chave = document.getElementById('pix-chave-val').textContent;
+    navigator.clipboard.writeText(chave).then(() => alert('Chave PIX copiada!'));
+}
+
+function enviarComprovante() {
+    const comp = document.getElementById('comprovante-pix').value.trim();
+    if (!comp) { alert('Cole o comprovante antes de enviar.'); return; }
+    fetch('/pagamento/confirmar-pix', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ barbearia_id: barbeariaId, comprovante: comp })
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            alert(data.message);
+            document.querySelector('.cadastro').innerHTML = `
+                <div style="text-align:center;padding:40px 20px;">
+                    <div style="font-size:48px;margin-bottom:16px;">⏳</div>
+                    <h2 style="font-family:'Sora',sans-serif;color:#0f172a;margin-bottom:8px;">Comprovante enviado!</h2>
+                    <p style="color:#64748b;margin-bottom:24px;">Aguarde a confirmação. Você receberá acesso em até 24h.</p>
+                    <a href="/barbeiro" style="color:#4e95ff;font-weight:600;">Ir para login da barbearia</a>
+                </div>`;
+        }
+    });
+}
+
+function notificarPagamento(metodo) {
+    fetch('/pagamento/confirmar-pix', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ barbearia_id: barbeariaId, comprovante: 'Pagamento via ' + metodo })
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            alert('Pagamento notificado! Aguarde a confirmação pelo admin.');
+            window.location.href = '/barbeiro';
+        }
+    });
+}
+</script>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

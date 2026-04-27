@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarberFlow</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=3">
+</head>
+<body class="body-index">
+
+    <!-- NAV -->
+    <nav class="nav-bar">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="BarberFlow">
+        </div>
+        <h1 class="titulo">BarberFlow</h1>
+        <div class="nav-links">
+            {% if logado %}
+                <a href="#" id="btn-meus-agendamentos">Meus agendamentos</a>
+                <div class="profile-container">
+                    <a href="#" id="btn-perfil" class="perfil-link">
+                        <span id="nav-nome-usuario">{{ nome_usuario or 'Perfil' }}</span> ▾
+                    </a>
+                    <div class="profile-dropdown" id="dropdown-perfil">
+                        <div class="dropdown-header">
+                            <p id="saudacao">Olá, {{ nome_usuario or 'Usuário' }}</p>
+                        </div>
+                        <a href="#" id="btn-meus-dados">📝 Meus Dados</a>
+                        <div class="divider"></div>
+                        <a href="/sair" class="sair">🚪 Sair</a>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Nav para visitantes não logados -->
+                <div class="nav-visitante">
+                    <a href="/login-page" class="nav-link-visitante">Entrar</a>
+                    <a href="/cadastro" class="btn-cadastro-nav">Criar conta</a>
+                    <a href="/barbeiro" class="nav-link-barb">✂️ Sou barbearia</a>
+                </div>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- HERO + BUSCA -->
+    <div class="hero-section">
+        <h2 class="hero-titulo">Encontre a melhor barbearia</h2>
+        <p class="hero-sub">Agende em segundos, sem complicação</p>
+        <div class="busca">
+            <input type="text" id="pesquisa" placeholder="🔍  Buscar barbearias por nome ou bairro...">
+            <button id="buscar">Buscar</button>
+        </div>
+    </div>
+
+    <!-- LISTA DE BARBEARIAS -->
+    <div class="opcoes">
+        <div class="lista-barbearias" id="lista-barbearias">
+            {% for b in barbearias %}
+            <div class="barbearia-card" onclick="abrirBarbearia('{{ b.id }}', '{{ b.nome }}', '{{ b.bairro }}', '{{ b.avaliacao }}')">
+                <div class="card-logo">
+                    <img src="{{ b.logo_url or url_for('static', filename='logo.png') }}" alt="{{ b.nome }}">
+                </div>
+                <div class="card-info">
+                    <h3>{{ b.nome }}</h3>
+                    <p>{{ b.bairro }} • ⭐ {{ b.avaliacao }}</p>
+                    <p class="card-servicos">{{ b.servicos_resumo }}</p>
+                </div>
+                <div class="acoes">
+                    <span class="badge-disponivel">Disponível</span>
+                    <button class="btn-agendar">Agendar</button>
+                </div>
+            </div>
+            {% else %}
+            <div class="barbearia-card" onclick="abrirModal('1')">
+                <div class="card-logo"><div class="card-logo-placeholder">BC</div></div>
+                <div class="card-info">
+                    <h3>Barbearia Central</h3>
+                    <p>Centro • ⭐ 4.8</p>
+                    <p class="card-servicos">Corte, Barba, Sobrancelha</p>
+                </div>
+                <div class="acoes">
+                    <span class="badge-disponivel">Disponível</span>
+                    <button class="btn-agendar">Agendar</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ===== MODAL: PROMPT DE LOGIN ===== -->
+    <div class="modal-overlay" id="modal-login-overlay" onclick="fecharModalLogin()"></div>
+    <div class="modal-login-prompt" id="modal-login-prompt">
+        <button class="modal-close" onclick="fecharModalLogin()">✕</button>
+        <div style="text-align:center;padding:8px 0 20px;">
+            <div style="font-size:36px;margin-bottom:12px;">✂️</div>
+            <h2 style="font-family:'Sora',sans-serif;font-size:20px;color:#0f172a;margin-bottom:6px;">Para agendar, você precisa de uma conta</h2>
+            <p style="font-size:14px;color:#64748b;">É rápido e gratuito para clientes!</p>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            <a href="/cadastro" class="btn-proximo" style="text-align:center;text-decoration:none;">✨ Criar conta grátis</a>
+            <a href="/login-page" class="btn-step-back" style="text-align:center;text-decoration:none;display:block;padding:13px;border-radius:12px;">Já tenho conta → Entrar</a>
+        </div>
+    </div>
+
+    <!-- ===== MODAL DE AGENDAMENTO ===== -->
+    <div class="modal-overlay" id="modal-overlay" onclick="fecharModal()"></div>
+    <div class="modal-agendamento" id="modal-agendamento">
+        <button class="modal-close" onclick="fecharModal()">✕</button>
+        <div class="modal-header">
+            <div class="modal-logo" id="modal-logo">BC</div>
+            <div>
+                <h2 id="modal-nome">Barbearia</h2>
+                <p id="modal-info">—</p>
+            </div>
+        </div>
+        <div class="steps-bar">
+            <div class="step-item active" id="step-ind-1">1. Serviço</div>
+            <div class="step-sep">›</div>
+            <div class="step-item" id="step-ind-2">2. Barbeiro</div>
+            <div class="step-sep">›</div>
+            <div class="step-item" id="step-ind-3">3. Data</div>
+            <div class="step-sep">›</div>
+            <div class="step-item" id="step-ind-4">4. Confirmar</div>
+        </div>
+
+        <div class="modal-step active" id="modal-step-1">
+            <h3 class="step-titulo">Escolha o serviço</h3>
+            <div class="servicos-lista" id="servicos-lista">
+                <div class="servico-item" onclick="selecionarServico(this, 'Corte', 35, 30)">
+                    <div class="servico-info"><strong>Corte</strong><small>30 min</small></div>
+                    <span class="servico-preco">R$ 35</span>
+                </div>
+                <div class="servico-item" onclick="selecionarServico(this, 'Barba', 25, 20)">
+                    <div class="servico-info"><strong>Barba</strong><small>20 min</small></div>
+                    <span class="servico-preco">R$ 25</span>
+                </div>
+                <div class="servico-item" onclick="selecionarServico(this, 'Corte + Barba', 55, 50)">
+                    <div class="servico-info"><strong>Corte + Barba</strong><small>50 min</small></div>
+                    <span class="servico-preco">R$ 55</span>
+                </div>
+            </div>
+            <button class="btn-step-next" onclick="irStep(2)" disabled id="btn-step-1">Próximo →</button>
+        </div>
+
+        <div class="modal-step" id="modal-step-2">
+            <h3 class="step-titulo">Escolha o barbeiro</h3>
+            <div class="barbeiros-lista" id="barbeiros-lista">
+                <div class="barbeiro-item" onclick="selecionarBarbeiro(this, 'João Silva', '1')">
+                    <div class="barbeiro-avatar">JS</div>
+                    <div><strong>João Silva</strong><small>Especialista em degradê</small></div>
+                </div>
+                <div class="barbeiro-item" onclick="selecionarBarbeiro(this, 'Qualquer barbeiro', '0')">
+                    <div class="barbeiro-avatar" style="background:#e2e8f0;color:#64748b">✦</div>
+                    <div><strong>Qualquer barbeiro</strong><small>Primeiro disponível</small></div>
+                </div>
+            </div>
+            <div class="step-nav">
+                <button class="btn-step-back" onclick="irStep(1)">← Voltar</button>
+                <button class="btn-step-next" onclick="irStep(3)" disabled id="btn-step-2">Próximo →</button>
+            </div>
+        </div>
+
+        <div class="modal-step" id="modal-step-3">
+            <h3 class="step-titulo">Escolha data e horário</h3>
+            <p class="step-label">Data</p>
+            <input type="date" id="input-data" class="input-data" onchange="carregarHorarios()">
+            <p class="step-label" style="margin-top:16px">Horários disponíveis</p>
+            <div class="horarios-grid" id="horarios-grid">
+                <p class="horarios-placeholder">Selecione uma data</p>
+            </div>
+            <div class="step-nav">
+                <button class="btn-step-back" onclick="irStep(2)">← Voltar</button>
+                <button class="btn-step-next" onclick="irStep(4)" disabled id="btn-step-3">Próximo →</button>
+            </div>
+        </div>
+
+        <div class="modal-step" id="modal-step-4">
+            <h3 class="step-titulo">Confirmar agendamento</h3>
+            <div class="confirmacao-card">
+                <div class="conf-row"><span>Barbearia</span><strong id="conf-barbearia">—</strong></div>
+                <div class="conf-row"><span>Serviço</span><strong id="conf-servico">—</strong></div>
+                <div class="conf-row"><span>Barbeiro</span><strong id="conf-barbeiro">—</strong></div>
+                <div class="conf-row"><span>Data</span><strong id="conf-data">—</strong></div>
+                <div class="conf-row"><span>Horário</span><strong id="conf-horario">—</strong></div>
+                <div class="conf-row conf-total"><span>Total</span><strong id="conf-preco">—</strong></div>
+            </div>
+            <div class="step-nav">
+                <button class="btn-step-back" onclick="irStep(3)">← Voltar</button>
+                <button class="btn-confirmar" onclick="confirmarAgendamento()">✓ Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== PAINEL MEUS AGENDAMENTOS ===== -->
+    <div class="painel-agendamentos" id="painel-agendamentos">
+        <div class="painel-header">
+            <h2>Meus agendamentos</h2>
+            <button onclick="fecharPainelAgendamentos()">✕</button>
+        </div>
+        <div class="agendamentos-lista" id="agendamentos-lista">
+            <p class="vazio-msg" style="padding:24px;text-align:center;">Carregando...</p>
+        </div>
+    </div>
+
+    <!-- ===== MODAL EDITAR AGENDAMENTO ===== -->
+    <div class="modal-overlay" id="modal-edit-overlay"></div>
+    <div class="modal-agendamento" id="modal-editar" style="max-width:440px;">
+        <button class="modal-close" onclick="fecharModalEditar()">✕</button>
+        <h2 style="font-family:'Sora',sans-serif;font-size:18px;color:#0f172a;margin-bottom:20px;">Editar agendamento</h2>
+        <input type="hidden" id="edit-ag-id">
+
+        <div class="field" style="margin-bottom:14px;">
+            <label class="step-label">Data</label>
+            <input type="date" id="edit-data" class="input-data">
+        </div>
+        <div class="field" style="margin-bottom:14px;">
+            <label class="step-label">Horário</label>
+            <input type="time" id="edit-horario" class="input-data">
+        </div>
+        <div class="field" style="margin-bottom:14px;">
+            <label class="step-label">Serviço</label>
+            <input type="text" id="edit-servico" placeholder="Ex: Corte" class="input-data">
+        </div>
+        <div class="field" style="margin-bottom:20px;">
+            <label class="step-label">Barbeiro</label>
+            <input type="text" id="edit-barbeiro" placeholder="Ex: João Silva" class="input-data">
+        </div>
+
+        <div class="step-nav">
+            <button class="btn-step-back" onclick="fecharModalEditar()">Cancelar</button>
+            <button class="btn-confirmar" onclick="salvarEdicaoAgendamento()">✓ Salvar</button>
+        </div>
+    </div>
+
+    <!-- ===== MODAL MEUS DADOS ===== -->
+    <div class="modal-overlay" id="modal-dados-overlay"></div>
+    <div class="modal-agendamento" id="modal-meus-dados" style="max-width:440px;">
+        <button class="modal-close" onclick="fecharModalDados()">✕</button>
+        <h2 style="font-family:'Sora',sans-serif;font-size:18px;color:#0f172a;margin-bottom:20px;">Meus dados</h2>
+
+        <label class="step-label">Nome</label>
+        <input type="text" id="dados-nome" class="input-data" style="margin-bottom:14px;">
+        <label class="step-label">Telefone</label>
+        <input type="text" id="dados-telefone" class="input-data" style="margin-bottom:20px;">
+
+        <div style="background:#f8fafc;border-radius:12px;padding:16px;margin-bottom:16px;">
+            <p style="font-size:12px;font-weight:700;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;">Alterar senha</p>
+            <input type="password" id="dados-senha-atual" placeholder="Senha atual" class="input-data" style="margin-bottom:10px;">
+            <input type="password" id="dados-nova-senha" placeholder="Nova senha" class="input-data" style="margin-bottom:0;">
+        </div>
+
+        <div class="step-nav">
+            <button class="btn-step-back" onclick="fecharModalDados()">Cancelar</button>
+            <button class="btn-confirmar" onclick="salvarMeusDados()">✓ Salvar</button>
+        </div>
+    </div>
+
+    
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarberFlow — Cadastro</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="body-cadastro">
+
+<div class="cadastro">
+
+    <!-- Seleção do tipo de conta -->
+    <div id="step-tipo" class="cadastro-step active">
+        <h1>Criar conta</h1>
+        <p class="cadastro-desc">Qual o tipo de conta?</p>
+
+        <div class="tipo-conta-grid">
+            <button type="button" class="tipo-conta-btn" onclick="escolherTipo('cliente')">
+                <span class="tipo-icon">👤</span>
+                <strong>Cliente</strong>
+                <small>Quero agendar serviços</small>
+            </button>
+            <button type="button" class="tipo-conta-btn" onclick="escolherTipo('barbearia')">
+                <span class="tipo-icon">✂️</span>
+                <strong>Barbearia</strong>
+                <small>Quero cadastrar meu negócio</small>
+            </button>
+        </div>
+
+        <div class="links">
+            <a href="/login-page">Já tenho conta</a>
+        </div>
+    </div>
+
+    <!-- ===== CADASTRO CLIENTE ===== -->
+    <div id="step-cliente" class="cadastro-step">
+        <button type="button" class="btn-voltar" onclick="voltarStep('step-tipo')">← Voltar</button>
+        <h1>Cadastro de Cliente</h1>
+
+        <form id="form-cliente" method="POST" action="/cadastro/cliente">
+            <input type="hidden" name="tipo" value="cliente">
+
+            <label>Nome completo</label>
+            <input type="text" name="nome" placeholder="Seu nome completo" required>
+
+            <label>Email</label>
+            <input type="email" name="email" placeholder="seu@email.com" required>
+
+            <label>Senha</label>
+            <input type="password" name="senha" placeholder="••••••••" required>
+
+            <label>Confirmar senha</label>
+            <input type="password" name="confirmar_senha" placeholder="••••••••" required>
+
+            <label>Telefone</label>
+            <input type="text" name="telefone" placeholder="(00) 00000-0000">
+
+            <button type="submit">Criar conta</button>
+        </form>
+    </div>
+
+    <!-- ===== CADASTRO BARBEARIA — STEP 1: Dados básicos ===== -->
+    <div id="step-barb-1" class="cadastro-step">
+        <button type="button" class="btn-voltar" onclick="voltarStep('step-tipo')">← Voltar</button>
+        <div class="step-indicator">
+            <span class="step-dot active"></span>
+            <span class="step-dot"></span>
+            <span class="step-dot"></span>
+            <span class="step-dot"></span>
+        </div>
+        <h1>Dados da Barbearia</h1>
+
+        <div class="cadastro-fields">
+            <label>Nome da barbearia</label>
+            <input type="text" id="barb-nome" placeholder="Ex: Barbearia do João" required>
+
+            <label>CNPJ / CPF</label>
+            <input type="text" id="barb-cnpj" placeholder="00.000.000/0000-00">
+
+            <label>Email de acesso</label>
+            <input type="email" id="barb-email" placeholder="contato@barbearia.com" required>
+
+            <label>Senha</label>
+            <input type="password" id="barb-senha" placeholder="••••••••" required>
+
+            <label>Confirmar senha</label>
+            <input type="password" id="barb-confirmar" placeholder="••••••••" required>
+
+            <label>Telefone / WhatsApp</label>
+            <input type="text" id="barb-tel" placeholder="(00) 00000-0000">
+
+            <label>Logo da barbearia</label>
+            <input type="file" id="barb-logo" accept="image/*" class="input-file">
+        </div>
+
+        <button type="button" class="btn-proximo" onclick="proximoStep('step-barb-2')">Próximo →</button>
+    </div>
+
+    <!-- ===== CADASTRO BARBEARIA — STEP 2: Endereço ===== -->
+    <div id="step-barb-2" class="cadastro-step">
+        <button type="button" class="btn-voltar" onclick="voltarStep('step-barb-1')">← Voltar</button>
+        <div class="step-indicator">
+            <span class="step-dot done"></span>
+            <span class="step-dot active"></span>
+            <span class="step-dot"></span>
+            <span class="step-dot"></span>
+        </div>
+        <h1>Endereço</h1>
+
+        <div class="cadastro-fields">
+            <label>CEP</label>
+            <input type="text" id="barb-cep" placeholder="00000-000">
+
+            <label>Rua / Avenida</label>
+            <input type="text" id="barb-rua" placeholder="Nome da rua">
+
+            <label>Número</label>
+            <input type="text" id="barb-numero" placeholder="Ex: 123">
+
+            <label>Bairro</label>
+            <input type="text" id="barb-bairro" placeholder="Nome do bairro">
+
+            <label>Cidade</label>
+            <input type="text" id="barb-cidade" placeholder="Nome da cidade">
+
+            <label>Estado</label>
+            <input type="text" id="barb-estado" placeholder="Ex: SP" maxlength="2">
+        </div>
+
+        <button type="button" class="btn-proximo" onclick="proximoStep('step-barb-3')">Próximo →</button>
+    </div>
+
+    <!-- ===== CADASTRO BARBEARIA — STEP 3: Serviços e Barbeiros ===== -->
+    <div id="step-barb-3" class="cadastro-step">
+        <button type="button" class="btn-voltar" onclick="voltarStep('step-barb-2')">← Voltar</button>
+        <div class="step-indicator">
+            <span class="step-dot done"></span>
+            <span class="step-dot done"></span>
+            <span class="step-dot active"></span>
+            <span class="step-dot"></span>
+        </div>
+        <h1>Serviços e Barbeiros</h1>
+
+        <!-- Serviços -->
+        <p class="section-label">Serviços oferecidos</p>
+        <div class="add-lista" id="lista-servicos">
+            <div class="add-item">
+                <input type="text" placeholder="Nome do serviço" class="inp-servico-nome">
+                <input type="text" placeholder="Preço (R$)" class="inp-servico-preco" style="width:90px">
+                <input type="text" placeholder="Duração (min)" class="inp-servico-dur" style="width:100px">
+            </div>
+        </div>
+        <button type="button" class="btn-add-item" onclick="adicionarServico()">+ Adicionar serviço</button>
+
+        <!-- Barbeiros -->
+        <p class="section-label" style="margin-top:20px">Barbeiros da equipe</p>
+        <div class="add-lista" id="lista-barbeiros">
+            <div class="add-item">
+                <input type="text" placeholder="Nome do barbeiro" class="inp-barbeiro-nome">
+                <input type="text" placeholder="Especialidade" class="inp-barbeiro-esp">
+            </div>
+        </div>
+        <button type="button" class="btn-add-item" onclick="adicionarBarbeiro()">+ Adicionar barbeiro</button>
+
+        <!-- Horário de funcionamento -->
+        <p class="section-label" style="margin-top:20px">Horário de funcionamento</p>
+        <div class="horario-grid">
+            <div class="horario-row">
+                <span>Seg – Sex</span>
+                <input type="time" id="h-semana-ini" value="09:00">
+                <span>às</span>
+                <input type="time" id="h-semana-fim" value="19:00">
+            </div>
+            <div class="horario-row">
+                <span>Sábado</span>
+                <input type="time" id="h-sab-ini" value="09:00">
+                <span>às</span>
+                <input type="time" id="h-sab-fim" value="17:00">
+            </div>
+            <div class="horario-row">
+                <span>Domingo</span>
+                <input type="checkbox" id="h-dom-fechado"> <label for="h-dom-fechado" style="font-size:13px; text-transform:none; letter-spacing:0">Fechado</label>
+            </div>
+        </div>
+
+        <button type="button" class="btn-proximo" onclick="proximoStep('step-barb-4')">Próximo →</button>
+    </div>
+
+    <!-- ===== CADASTRO BARBEARIA — STEP 4: Plano ===== -->
+    <div id="step-barb-4" class="cadastro-step">
+        <button type="button" class="btn-voltar" onclick="voltarStep('step-barb-3')">← Voltar</button>
+        <div class="step-indicator">
+            <span class="step-dot done"></span>
+            <span class="step-dot done"></span>
+            <span class="step-dot done"></span>
+            <span class="step-dot active"></span>
+        </div>
+        <h1>Escolha seu plano</h1>
+
+        <div class="planos-grid">
+            <div class="plano-card plano-destaque" onclick="selecionarPlano('mensal', this)">
+                <div class="plano-badge">Mais popular</div>
+                <h3>Mensal</h3>
+                <div class="plano-preco">
+                    <span class="valor" id="preco-mensal">R$ 90</span>
+                    <span class="periodo">/mês</span>
+                </div>
+                <ul class="plano-features">
+                    <li>✓ Agendamentos ilimitados</li>
+                    <li>✓ Painel financeiro</li>
+                    <li>✓ Gestão de clientes</li>
+                    <li>✓ Visibilidade na plataforma</li>
+                </ul>
+                <input type="radio" name="plano" value="mensal" checked style="display:none">
+            </div>
+        </div>
+
+        <p class="plano-aviso">⚠️ Você tem <strong>7 dias grátis</strong> para testar. Após esse período, o pagamento mensal será necessário para manter o acesso.</p>
+
+        <form id="form-barbearia" method="POST" action="/cadastro/barbearia">
+            <input type="hidden" name="tipo" value="barbearia">
+            <input type="hidden" name="plano" value="mensal" id="input-plano">
+            <!-- Os outros dados são coletados via JS antes do submit -->
+        </form>
+
+        <button type="button" class="btn-proximo" onclick="finalizarCadastroBarbearia()" style="background: linear-gradient(135deg, #4e95ff, #2563eb);">
+            Finalizar cadastro 🎉
+        </button>
+    </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

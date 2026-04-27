@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarberFlow — Painel da Barbearia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="body-painel">
+ 
+<div class="painel-layout">
+ 
+    <aside class="sidebar">
+        <div class="sidebar-logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="BarberFlow">
+            <span>BarberFlow</span>
+        </div>
+        <div class="sidebar-barbearia">
+            <div class="sb-avatar">{{ nome_barbearia[:2].upper() if nome_barbearia else 'BB' }}</div>
+            <div>
+                <p class="sb-nome">{{ nome_barbearia or 'Minha Barbearia' }}</p>
+                <span class="sb-status {{ 'ativo' if plano_ativo else 'inativo' }}">
+                    {{ '✓ Plano ativo' if plano_ativo else '⚠ Plano vencido' }}
+                </span>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-section="dashboard"><span class="nav-icon">📊</span> Dashboard</a>
+            <a href="#" class="nav-item" data-section="atendimento"><span class="nav-icon">⚡</span> Atendimento</a>
+            <a href="#" class="nav-item" data-section="agendamentos"><span class="nav-icon">📅</span> Agendamentos</a>
+            <a href="#" class="nav-item" data-section="financeiro"><span class="nav-icon">💰</span> Financeiro</a>
+            <a href="#" class="nav-item" data-section="clientes"><span class="nav-icon">👥</span> Clientes</a>
+            <a href="#" class="nav-item" data-section="servicos"><span class="nav-icon">✂️</span> Serviços</a>
+            <a href="#" class="nav-item" data-section="plano"><span class="nav-icon">💳</span> Meu Plano</a>
+            <a href="/sair" class="nav-item nav-sair"><span class="nav-icon">🚪</span> Sair</a>
+        </nav>
+    </aside>
+ 
+    <main class="painel-main">
+ 
+        <!-- ===== DASHBOARD ===== -->
+        <section class="painel-section active" id="section-dashboard">
+            <h2 class="section-titulo">Dashboard</h2>
+            <div class="metricas-grid">
+                <div class="metrica-card">
+                    <p class="metrica-label">Agendamentos hoje</p>
+                    <p class="metrica-valor">{{ agendamentos_hoje or 0 }}</p>
+                </div>
+                <div class="metrica-card">
+                    <p class="metrica-label">Receita hoje</p>
+                    <p class="metrica-valor">R$ {{ receita_hoje or '0,00' }}</p>
+                </div>
+                <div class="metrica-card">
+                    <p class="metrica-label">Receita no mês</p>
+                    <p class="metrica-valor">R$ {{ receita_mes or '0,00' }}</p>
+                </div>
+                <div class="metrica-card">
+                    <p class="metrica-label">Total de clientes</p>
+                    <p class="metrica-valor">{{ total_clientes or 0 }}</p>
+                </div>
+            </div>
+            <div class="dash-card">
+                <h3>Próximos agendamentos</h3>
+                <div class="agenda-hoje">
+                    {% for ag in proximos_agendamentos %}
+                    <div class="agenda-item">
+                        <div class="ag-hora">{{ ag.horario }}</div>
+                        <div class="ag-det">
+                            <strong>{{ ag.cliente_nome or 'Cliente' }}</strong>
+                            <span>{{ ag.servico }} • {{ ag.barbeiro }}</span>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <span class="ag-tag {{ ag.status }}">{{ ag.status }}</span>
+                            {% if ag.status not in ('em_andamento', 'confirmado') %}
+                            <button class="btn-iniciar-small"
+                                onclick="abrirAtendimentoDeAgendamento('{{ ag.id }}','{{ ag.cliente_nome or 'Cliente' }}','{{ ag.servico }}','{{ ag.barbeiro }}','{{ ag.preco }}')">
+                                ▶ Iniciar
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="vazio-msg">Nenhum agendamento para hoje.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+ 
+        <!-- ===== ATENDIMENTO ===== -->
+        <section class="painel-section" id="section-atendimento">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+                <h2 class="section-titulo" style="margin-bottom:0">Atendimento</h2>
+                <button class="btn-pagar" onclick="abrirModalNovoAtendimento()" style="font-size:14px;padding:10px 20px;">
+                    ＋ Novo atendimento
+                </button>
+            </div>
+ 
+            <!-- Atendimentos em aberto -->
+            <div class="dash-card">
+                <h3>🔴 Em andamento</h3>
+                <div id="lista-atendimentos-abertos">
+                    {% if atendimentos_abertos %}
+                        {% for at in atendimentos_abertos %}
+                        <div class="atendimento-card" id="at-{{ at.id }}">
+                            <div class="at-info">
+                                <div class="at-avatar">{{ at.cliente_nome[:2].upper() if at.cliente_nome else '??' }}</div>
+                                <div>
+                                    <strong>{{ at.cliente_nome or 'Cliente avulso' }}</strong>
+                                    <p>{{ at.servico }} • {{ at.barbeiro_nome }}</p>
+                                    <p class="at-hora">Início: {{ at.data_inicio }}</p>
+                                </div>
+                            </div>
+                            <div class="at-acoes">
+                                <span class="at-valor" id="at-valor-{{ at.id }}">R$ {{ '%.2f'|format(at.valor)|replace('.', ',') }}</span>
+                                <button class="btn-fechar-at" onclick="fecharAtendimento({{ at.id }}, {{ at.valor }})">
+                                    ✓ Finalizar
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="vazio-msg" id="msg-sem-atendimento">Nenhum atendimento em andamento.</p>
+                    {% endif %}
+                </div>
+            </div>
+ 
+            <!-- Últimos finalizados (hoje) -->
+            <div class="dash-card" style="margin-top:20px;">
+                <h3>✅ Finalizados hoje</h3>
+                <div id="lista-atendimentos-finalizados">
+                    <p class="vazio-msg">Carregando...</p>
+                </div>
+            </div>
+        </section>
+ 
+        <!-- ===== AGENDAMENTOS ===== -->
+        <section class="painel-section" id="section-agendamentos">
+            <h2 class="section-titulo">Agendamentos</h2>
+            <div class="filtros-bar">
+                <input type="date" id="filtro-data" class="input-filtro">
+                <select id="filtro-barbeiro" class="input-filtro">
+                    <option value="">Todos os barbeiros</option>
+                    {% for b in barbeiros %}<option value="{{ b.id }}">{{ b.nome }}</option>{% endfor %}
+                </select>
+                <select id="filtro-status" class="input-filtro">
+                    <option value="">Todos os status</option>
+                    <option value="confirmado">Confirmado</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="em_andamento">Em andamento</option>
+                    <option value="cancelado">Cancelado</option>
+                </select>
+            </div>
+            <div class="tabela-wrapper">
+                <table class="tabela-painel">
+                    <thead>
+                        <tr><th>Cliente</th><th>Serviço</th><th>Barbeiro</th><th>Data</th><th>Hora</th><th>Status</th><th>Ação</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for ag in todos_agendamentos %}
+                        <tr>
+                            <td>{{ ag.cliente_nome or '—' }}</td>
+                            <td>{{ ag.servico }}</td>
+                            <td>{{ ag.barbeiro }}</td>
+                            <td>{{ ag.data }}</td>
+                            <td>{{ ag.horario }}</td>
+                            <td><span class="tag-status {{ ag.status }}">{{ ag.status }}</span></td>
+                            <td>
+                                {% if ag.status not in ('em_andamento', 'confirmado', 'cancelado') %}
+                                <button class="btn-iniciar-small"
+                                    onclick="abrirAtendimentoDeAgendamento('{{ ag.id }}','{{ ag.cliente_nome or 'Cliente' }}','{{ ag.servico }}','{{ ag.barbeiro }}','{{ ag.preco }}')">
+                                    ▶ Iniciar
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7" class="vazio-msg">Nenhum agendamento.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+ 
+        <!-- ===== FINANCEIRO ===== -->
+        <section class="painel-section" id="section-financeiro">
+            <h2 class="section-titulo">Financeiro</h2>
+            <div class="metricas-grid">
+                <div class="metrica-card destaque">
+                    <p class="metrica-label">Receita este mês</p>
+                    <p class="metrica-valor">R$ {{ receita_mes or '0,00' }}</p>
+                </div>
+                <div class="metrica-card">
+                    <p class="metrica-label">Mês anterior</p>
+                    <p class="metrica-valor">R$ {{ receita_mes_ant or '0,00' }}</p>
+                </div>
+                <div class="metrica-card">
+                    <p class="metrica-label">Serviço top</p>
+                    <p class="metrica-valor servico-text">{{ servico_top or '—' }}</p>
+                </div>
+                <div class="metrica-card">
+                    <p class="metrica-label">Ticket médio</p>
+                    <p class="metrica-valor">R$ {{ ticket_medio or '0,00' }}</p>
+                </div>
+            </div>
+            <div class="dash-card">
+                <h3>Histórico de serviços</h3>
+                <table class="tabela-painel">
+                    <thead><tr><th>Data</th><th>Serviço</th><th>Cliente</th><th>Valor</th></tr></thead>
+                    <tbody>
+                        {% for p in historico %}
+                        <tr>
+                            <td>{{ p.data }}</td><td>{{ p.servico }}</td>
+                            <td>{{ p.cliente }}</td><td>R$ {{ p.preco }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="vazio-msg">Nenhum registro.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+ 
+        <!-- ===== CLIENTES ===== -->
+        <section class="painel-section" id="section-clientes">
+            <h2 class="section-titulo">Clientes</h2>
+            <div class="clientes-tabs">
+                <button class="cli-tab active" onclick="filtrarClientes('todos', this)">Todos</button>
+                <button class="cli-tab fieis" onclick="filtrarClientes('fiel', this)">⭐ Fiéis</button>
+                <button class="cli-tab ocasionais" onclick="filtrarClientes('ocasional', this)">🔄 Ocasionais</button>
+                <button class="cli-tab novos" onclick="filtrarClientes('novo', this)">✨ Novos</button>
+            </div>
+            <div class="clientes-lista">
+                {% for c in clientes %}
+                <div class="cliente-card" data-tipo="{{ c.tipo }}">
+                    <div class="cli-avatar">{{ c.nome[:2].upper() }}</div>
+                    <div class="cli-info">
+                        <strong>{{ c.nome }}</strong>
+                        <p>{{ c.total_visitas }} visita{{ 's' if c.total_visitas != 1 else '' }} • Última: {{ c.ultima_visita }}</p>
+                        <p>{{ c.servico_favorito or '—' }}</p>
+                    </div>
+                    <span class="cli-badge {{ c.tipo }}">{{ c.tipo.title() }}</span>
+                </div>
+                {% else %}
+                <p class="vazio-msg">Nenhum cliente ainda.</p>
+                {% endfor %}
+            </div>
+        </section>
+ 
+        <!-- ===== SERVIÇOS ===== -->
+        <section class="painel-section" id="section-servicos">
+            <h2 class="section-titulo">Serviços e Equipe</h2>
+            <div class="config-grid">
+                <div class="dash-card">
+                    <h3>Serviços</h3>
+                    <div id="config-servicos-lista">
+                        {% for s in servicos %}
+                        <div class="config-item">
+                            <span>{{ s.nome }}</span><span>{{ s.duracao }}min</span>
+                            <span>R$ {{ s.preco }}</span>
+                            <button class="btn-del-item" onclick="excluirServico('{{ s.id }}')">🗑️</button>
+                        </div>
+                        {% else %}
+                        <p class="vazio-msg">Nenhum serviço cadastrado.</p>
+                        {% endfor %}
+                    </div>
+                    <button class="btn-add-item" onclick="abrirModalServico()">+ Adicionar serviço</button>
+                </div>
+                <div class="dash-card">
+                    <h3>Barbeiros</h3>
+                    <div id="config-barbeiros-lista">
+                        {% for b in barbeiros %}
+                        <div class="config-item">
+                            <div class="barbeiro-avatar sm">{{ b.nome[:2].upper() }}</div>
+                            <span>{{ b.nome }}</span>
+                            <span class="text-muted">{{ b.especialidade }}</span>
+                            <button class="btn-del-item" onclick="excluirBarbeiro('{{ b.id }}')">🗑️</button>
+                        </div>
+                        {% else %}
+                        <p class="vazio-msg">Nenhum barbeiro cadastrado.</p>
+                        {% endfor %}
+                    </div>
+                    <button class="btn-add-item" onclick="abrirModalBarbeiro()">+ Adicionar barbeiro</button>
+                </div>
+            </div>
+        </section>
+ 
+        <!-- ===== MEU PLANO ===== -->
+        <section class="painel-section" id="section-plano">
+            <h2 class="section-titulo">Meu Plano</h2>
+            <div class="plano-status-card {{ 'ativo' if plano_ativo else 'vencido' }}">
+                <div class="plano-status-icon">{{ '✓' if plano_ativo else '⚠' }}</div>
+                <div>
+                    <h3>Plano Mensal — R$ {{ preco_plano or '40' }}/mês</h3>
+                    <p>{{ 'Vence em: ' + data_vencimento if plano_ativo else 'Plano vencido. Renove para manter acesso.' }}</p>
+                </div>
+            </div>
+ 
+            {% if not plano_ativo %}
+            <div class="aviso-bloqueio">
+                <p>⚠️ Seu acesso está suspenso. Renove o plano para reaparecer na plataforma.</p>
+            </div>
+            {% endif %}
+ 
+            <div class="dash-card">
+                <h3>Efetuar pagamento</h3>
+                <p style="color:#64748b;margin-bottom:16px">Valor: <strong>R$ {{ preco_plano or '40' }},00</strong> / mês</p>
+ 
+                <!-- Método de pagamento -->
+                <div class="pay-tabs" style="margin-bottom:16px;">
+                    <button class="pay-tab active" onclick="trocarMetodoPainel('pix', this)">PIX</button>
+                    <button class="pay-tab" onclick="trocarMetodoPainel('debito', this)">Débito</button>
+                    <button class="pay-tab" onclick="trocarMetodoPainel('credito', this)">Crédito</button>
+                </div>
+ 
+                <div id="painel-pay-pix" class="painel-pay-section active">
+                    {% if pix_chave %}
+                    <div class="pix-box">
+                        <p class="pix-label">Chave PIX</p>
+                        <div class="pix-chave-row">
+                            <span>{{ pix_chave }}</span>
+                            <button onclick="navigator.clipboard.writeText('{{ pix_chave }}').then(()=>alert('PIX copiado!'))" class="btn-copiar">📋 Copiar</button>
+                        </div>
+                        <p class="pix-nome">Favorecido: <strong>{{ pix_nome }}</strong></p>
+                    </div>
+                    {% else %}
+                    <p style="color:#94a3b8;font-size:13px;">PIX não configurado. Entre em contato com o suporte.</p>
+                    {% endif %}
+                </div>
+ 
+                <div id="painel-pay-debito" class="painel-pay-section" style="display:none;">
+                    <div class="pix-box">
+                        <p style="font-size:14px;color:#374151;line-height:1.6;">{{ maquina_instrucoes or 'Entre em contato com o suporte para pagamento por débito.' }}</p>
+                    </div>
+                </div>
+ 
+                <div id="painel-pay-credito" class="painel-pay-section" style="display:none;">
+                    <div class="pix-box">
+                        <p style="font-size:14px;color:#374151;line-height:1.6;">{{ maquina_instrucoes or 'Entre em contato com o suporte para pagamento por crédito.' }}</p>
+                        <div style="background:#fef9c3;border:1px solid #fcd34d;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px;color:#92400e;">
+                            💳 Cobrança recorrente no mesmo dia de cada mês.
+                        </div>
+                    </div>
+                </div>
+ 
+                <button class="btn-pagar" onclick="iniciarPagamentoPlano()" style="margin-top:16px;">
+                    💳 Pagar agora
+                </button>
+                <button class="btn-cancelar-plano" onclick="cancelarPlano()">Cancelar plano</button>
+            </div>
+ 
+            <div class="dash-card">
+                <h3>Histórico de pagamentos do plano</h3>
+                <table class="tabela-painel">
+                    <thead><tr><th>Data</th><th>Valor</th><th>Método</th><th>Status</th></tr></thead>
+                    <tbody>
+                        {% for p in historico_plano %}
+                        <tr>
+                            <td>{{ p.data_pagamento }}</td>
+                            <td>R$ {{ p.valor }}</td>
+                            <td>{{ p.metodo or '—' }}</td>
+                            <td><span class="tag-status {{ p.status }}">{{ p.status }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="vazio-msg">Nenhum pagamento registrado.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+ 
+    </main>
+</div>
+ 
+<!-- Modal Novo Atendimento -->
+<div class="modal-overlay" id="modal-at-overlay" onclick="fecharModalAt()"></div>
+<div class="modal-agendamento" id="modal-novo-at" style="max-width:440px;">
+    <button class="modal-close" onclick="fecharModalAt()">✕</button>
+    <h2 style="font-family:'Sora',sans-serif;font-size:18px;color:#0f172a;margin-bottom:20px;">⚡ Novo atendimento</h2>
+    <input type="hidden" id="at-agendamento-id" value="">
+ 
+    <label class="step-label">Cliente</label>
+    <input type="text" id="at-cliente" placeholder="Nome do cliente" class="input-data" style="margin-bottom:12px;">
+    <label class="step-label">Serviço</label>
+    <input type="text" id="at-servico" placeholder="Ex: Corte" class="input-data" style="margin-bottom:12px;">
+    <label class="step-label">Barbeiro</label>
+    <input type="text" id="at-barbeiro" placeholder="Ex: João Silva" class="input-data" style="margin-bottom:12px;">
+    <label class="step-label">Valor (R$)</label>
+    <input type="number" id="at-valor" placeholder="0,00" class="input-data" style="margin-bottom:20px;" step="0.01">
+ 
+    <button class="btn-confirmar" onclick="confirmarNovoAtendimento()" style="width:100%">▶ Iniciar atendimento</button>
+</div>
+ 
+<!-- Modal Finalizar Atendimento -->
+<div class="modal-overlay" id="modal-fin-overlay" onclick="fecharModalFin()"></div>
+<div class="modal-agendamento" id="modal-finalizar-at" style="max-width:380px;">
+    <button class="modal-close" onclick="fecharModalFin()">✕</button>
+    <h2 style="font-family:'Sora',sans-serif;font-size:18px;color:#0f172a;margin-bottom:8px;">✓ Finalizar atendimento</h2>
+    <p style="font-size:14px;color:#64748b;margin-bottom:20px;">Confirme o valor cobrado antes de fechar.</p>
+    <input type="hidden" id="fin-at-id">
+    <label class="step-label">Valor final (R$)</label>
+    <input type="number" id="fin-valor" class="input-data" step="0.01" style="margin-bottom:20px;">
+    <div class="step-nav">
+        <button class="btn-step-back" onclick="fecharModalFin()">Cancelar</button>
+        <button class="btn-confirmar" onclick="confirmarFechamentoAt()">✓ Finalizar</button>
+    </div>
+</div>
+ 
+<style>
+.btn-iniciar-small { padding:5px 10px; border-radius:6px; border:none; background:#3b82f6; color:white; font-size:12px; font-weight:600; cursor:pointer; }
+.btn-iniciar-small:hover { background:#2563eb; }
+.atendimento-card { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:#f0fdf4; border:1px solid #86efac; border-radius:12px; margin-bottom:10px; }
+.at-info { display:flex; align-items:center; gap:12px; }
+.at-avatar { width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,#16a34a,#15803d); display:flex; align-items:center; justify-content:center; font-family:'Sora',sans-serif; font-size:14px; font-weight:700; color:white; flex-shrink:0; }
+.at-info strong { display:block; font-size:14px; color:#0f172a; }
+.at-info p { font-size:12px; color:#64748b; margin:2px 0 0; }
+.at-hora { font-size:11px; color:#94a3b8 !important; }
+.at-acoes { display:flex; align-items:center; gap:10px; }
+.at-valor { font-family:'Sora',sans-serif; font-size:16px; font-weight:700; color:#16a34a; }
+.btn-fechar-at { padding:8px 14px; border-radius:8px; border:none; background:#16a34a; color:white; font-size:13px; font-weight:700; cursor:pointer; }
+.btn-fechar-at:hover { background:#22c55e; }
+.pay-tabs { display:flex; gap:8px; }
+.pay-tab { flex:1; padding:9px; border-radius:10px; border:1.5px solid #e2e8f0; background:#fff; font-size:13px; font-weight:700; color:#64748b; cursor:pointer; font-family:'Sora',sans-serif; transition:all 0.2s; }
+.pay-tab.active { border-color:#4e95ff; color:#4e95ff; background:#f0f7ff; }
+.pix-box { background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px 18px; }
+.pix-label { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#64748b; margin-bottom:8px; }
+.pix-chave-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.pix-chave-row span { font-family:'Sora',sans-serif; font-size:16px; font-weight:700; color:#0f172a; flex:1; word-break:break-all; }
+.btn-copiar { padding:7px 12px; border-radius:8px; border:1.5px solid #4e95ff; background:none; color:#4e95ff; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; }
+.pix-nome { font-size:13px; color:#64748b; }
+.input-data { width:100%; padding:11px 14px; border-radius:10px; border:1.5px solid #e2e8f0; font-size:14px; color:#0f172a; display:block; }
+</style>
+ 
+<script>
+let metodoPlanoAtual = 'pix';
+ 
+function trocarMetodoPainel(metodo, btn) {
+    metodoPlanoAtual = metodo;
+    document.querySelectorAll('.pay-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.painel-pay-section').forEach(s => s.style.display = 'none');
+    document.getElementById('painel-pay-' + metodo).style.display = 'block';
+}
+ 
+function iniciarPagamentoPlano() {
+    fetch('/plano/pagar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ metodo: metodoPlanoAtual })
+    }).then(r => r.json()).then(data => {
+        if (data.success && data.redirect) window.location.href = data.redirect;
+        else alert(data.message || 'Redirecionando para pagamento...');
+    });
+}
+ 
+// Abre modal de atendimento a partir de um agendamento
+function abrirAtendimentoDeAgendamento(agId, cliente, servico, barbeiro, valor) {
+    document.getElementById('at-agendamento-id').value = agId;
+    document.getElementById('at-cliente').value  = cliente;
+    document.getElementById('at-servico').value  = servico;
+    document.getElementById('at-barbeiro').value = barbeiro;
+    document.getElementById('at-valor').value    = valor || '';
+    document.getElementById('modal-at-overlay').classList.add('active');
+    document.getElementById('modal-novo-at').classList.add('active');
+}
+ 
+function abrirModalNovoAtendimento() {
+    document.getElementById('at-agendamento-id').value = '';
+    document.getElementById('at-cliente').value  = '';
+    document.getElementById('at-servico').value  = '';
+    document.getElementById('at-barbeiro').value = '';
+    document.getElementById('at-valor').value    = '';
+    document.getElementById('modal-at-overlay').classList.add('active');
+    document.getElementById('modal-novo-at').classList.add('active');
+}
+ 
+function fecharModalAt() {
+    document.getElementById('modal-at-overlay').classList.remove('active');
+    document.getElementById('modal-novo-at').classList.remove('active');
+}
+ 
+function confirmarNovoAtendimento() {
+    const dados = {
+        cliente_nome:  document.getElementById('at-cliente').value,
+        servico:       document.getElementById('at-servico').value,
+        barbeiro_nome: document.getElementById('at-barbeiro').value,
+        valor:         parseFloat(document.getElementById('at-valor').value) || 0,
+        agendamento_id: document.getElementById('at-agendamento-id').value || null
+    };
+    if (!dados.cliente_nome || !dados.servico) { alert('Preencha cliente e serviço.'); return; }
+    fetch('/atendimento/abrir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados)
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            fecharModalAt();
+            // Adiciona card na lista
+            const lista = document.getElementById('lista-atendimentos-abertos');
+            const sem = document.getElementById('msg-sem-atendimento');
+            if (sem) sem.remove();
+            lista.insertAdjacentHTML('beforeend', `
+                <div class="atendimento-card" id="at-${data.id}">
+                    <div class="at-info">
+                        <div class="at-avatar">${dados.cliente_nome.substring(0,2).toUpperCase()}</div>
+                        <div>
+                            <strong>${dados.cliente_nome}</strong>
+                            <p>${dados.servico} • ${dados.barbeiro_nome}</p>
+                            <p class="at-hora">Iniciado agora</p>
+                        </div>
+                    </div>
+                    <div class="at-acoes">
+                        <span class="at-valor" id="at-valor-${data.id}">R$ ${dados.valor.toFixed(2).replace('.',',')}</span>
+                        <button class="btn-fechar-at" onclick="fecharAtendimento(${data.id}, ${dados.valor})">✓ Finalizar</button>
+                    </div>
+                </div>
+            `);
+        } else alert('Erro ao abrir atendimento: ' + data.message);
+    });
+}
+ 
+function fecharAtendimento(id, valorAtual) {
+    document.getElementById('fin-at-id').value   = id;
+    document.getElementById('fin-valor').value   = valorAtual;
+    document.getElementById('modal-fin-overlay').classList.add('active');
+    document.getElementById('modal-finalizar-at').classList.add('active');
+}
+ 
+function fecharModalFin() {
+    document.getElementById('modal-fin-overlay').classList.remove('active');
+    document.getElementById('modal-finalizar-at').classList.remove('active');
+}
+ 
+function confirmarFechamentoAt() {
+    const id    = document.getElementById('fin-at-id').value;
+    const valor = parseFloat(document.getElementById('fin-valor').value) || 0;
+    fetch(`/atendimento/fechar/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ valor })
+    }).then(r => r.json()).then(data => {
+        if (data.success) {
+            fecharModalFin();
+            const card = document.getElementById(`at-${id}`);
+            if (card) {
+                card.style.background = '#f0f9ff';
+                card.style.borderColor = '#93c5fd';
+                card.querySelector('.btn-fechar-at').remove();
+                const valorSpan = card.querySelector('.at-valor');
+                if (valorSpan) valorSpan.textContent = `R$ ${valor.toFixed(2).replace('.',',')} ✓`;
+                setTimeout(() => card.remove(), 3000);
+            }
+        } else alert('Erro: ' + data.message);
+    });
+}
+</script>
+ 
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

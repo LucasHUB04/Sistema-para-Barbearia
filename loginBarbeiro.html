@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BarberFlow — Área da Barbearia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="body-login">
+
+  <form class="login-page login-barbeiro" id="login-form" data-tipo="barbeiro" method="POST" action="/login-page">
+
+    <div class="login-header">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="BarberFlow">
+        <div class="header-text">
+            <h2>Área da Barbearia</h2>
+            <p>Acesse o painel do seu negócio</p>
+        </div>
+    </div>
+
+    <!-- Neon sempre ativo nessa tela -->
+    <input type="hidden" name="tipo_login" value="barbeiro">
+
+    <label for="email">Email da barbearia</label>
+    <input type="email" id="email" name="email" placeholder="contato@barbearia.com" required>
+
+    <label for="senha">Senha</label>
+    <input type="password" id="senha" name="senha" placeholder="••••••••" required>
+
+    <button type="submit" id="entrar">Entrar no painel</button>
+
+    <div class="links">
+        <a href="/cadastro">Cadastrar minha barbearia</a>
+        <a href="/login-page" style="color: #94a3b8; font-size: 12px;">Sou cliente →</a>
+    </div>
+
+  </form>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+  <script>
+    // Aplica neon automaticamente na tela de barbeiro
+    document.querySelector('.login-page').classList.add('neon-ativo');
+  </script>
+</body>
+</html>
